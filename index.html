@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI SEO Content Analyzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">AI SEO Content Analyzer</h1>
+            <p class="text-gray-600">Paste your blog content below to analyze its AI SEO optimization</p>
+        </div>
+
+        <div class="max-w-4xl mx-auto">
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+                <textarea id="content" class="w-full h-64 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Paste your blog content here..."></textarea>
+                <button onclick="analyzeContent()" class="mt-4 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                    Analyze Content
+                </button>
+            </div>
+
+            <div id="results" class="hidden bg-white rounded-lg shadow-lg p-6">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Analysis Results</h2>
+                    <div class="text-4xl font-bold text-blue-500" id="total-score">0</div>
+                    <div class="text-gray-600">Total Score</div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 mb-2">LLM Understanding</h3>
+                        <div class="text-2xl font-bold text-green-500" id="llm-score">0</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 mb-2">Content Structure</h3>
+                        <div class="text-2xl font-bold text-blue-500" id="structure-score">0</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 mb-2">Link References</h3>
+                        <div class="text-2xl font-bold text-purple-500" id="link-score">0</div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-gray-800 mb-4">Recommendations</h3>
+                    <ul id="recommendations" class="list-disc list-inside text-gray-600">
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function analyzeContent() {
+            const content = document.getElementById('content').value;
+            if (!content) {
+                alert('Please paste some content to analyze');
+                return;
+            }
+
+            // Client-side analysis
+            const analysis = analyzeContentLocally(content);
+            
+            // Show results
+            document.getElementById('results').classList.remove('hidden');
+            
+            // Update scores
+            document.getElementById('total-score').textContent = analysis.total_score;
+            document.getElementById('llm-score').textContent = analysis.category_scores.llm_understanding;
+            document.getElementById('structure-score').textContent = analysis.category_scores.structure;
+            document.getElementById('link-score').textContent = analysis.category_scores.link_references;
+            
+            // Update recommendations
+            const recommendationsList = document.getElementById('recommendations');
+            recommendationsList.innerHTML = '';
+            analysis.recommendations.forEach(rec => {
+                const li = document.createElement('li');
+                li.textContent = rec;
+                recommendationsList.appendChild(li);
+            });
+        }
+
+        function analyzeContentLocally(content) {
+            // Initialize scores
+            const scores = {
+                llm_understanding: 0,
+                structure: 0,
+                link_references: 0
+            };
+
+            // Analyze LLM Understanding
+            const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+            const avgSentenceLength = sentences.reduce((acc, sent) => acc + sent.split(' ').length, 0) / sentences.length;
+            if (10 <= avgSentenceLength && avgSentenceLength <= 20) {
+                scores.llm_understanding += 20;
+            }
+
+            // Check for headings
+            const headings = content.match(/<h[1-3][^>]*>.*?<\/h[1-3]>/gi) || [];
+            if (headings.length >= 3) {
+                scores.llm_understanding += 15;
+            }
+
+            // Check for lists
+            const lists = content.match(/<(ul|ol)[^>]*>.*?<\/(ul|ol)>/gi) || [];
+            if (lists.length > 0) {
+                scores.llm_understanding += 15;
+            }
+
+            // Check for formatting
+            if (content.includes('<strong>') || content.includes('<em>')) {
+                scores.llm_understanding += 10;
+            }
+
+            // Analyze Structure
+            if (content.match(/TL;DR|Key Takeaways|Summary/i)) {
+                scores.structure += 20;
+            }
+
+            const questions = content.match(/\?/g) || [];
+            if (questions.length >= 3) {
+                scores.structure += 15;
+            }
+
+            if (content.match(/FAQ|How to|Guide|Tutorial/i)) {
+                scores.structure += 15;
+            }
+
+            // Analyze Link References
+            const links = content.match(/<a[^>]*>.*?<\/a>/gi) || [];
+            if (links.length >= 3) {
+                scores.link_references += 20;
+            }
+
+            if (content.match(/Source|Reference|Cited|According to/i)) {
+                scores.link_references += 15;
+            }
+
+            const evergreenTerms = ['guide', 'tutorial', 'how to', 'best practices', 'fundamentals'];
+            if (evergreenTerms.some(term => content.toLowerCase().includes(term))) {
+                scores.link_references += 15;
+            }
+
+            // Calculate total score
+            const total_score = Object.values(scores).reduce((a, b) => a + b, 0);
+
+            // Generate recommendations
+            const recommendations = [];
+            if (scores.llm_understanding < 40) {
+                recommendations.push("Improve content structure with more headings and lists");
+            }
+            if (scores.structure < 40) {
+                recommendations.push("Add a TL;DR section and more Q&A format content");
+            }
+            if (scores.link_references < 40) {
+                recommendations.push("Include more external links and citations");
+            }
+
+            return {
+                total_score,
+                category_scores: scores,
+                recommendations
+            };
+        }
+    </script>
+</body>
+</html> 

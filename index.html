@@ -9,18 +9,49 @@
         .gradient-bg {
             background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%);
         }
+        .tab-active {
+            border-bottom: 2px solid #3B82F6;
+            color: #3B82F6;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
         <div class="text-center mb-12">
             <h1 class="text-4xl font-bold text-gray-800 mb-4">AI SEO Content Analyzer</h1>
-            <p class="text-gray-600">Paste your blog content below to analyze its AI SEO optimization</p>
+            <p class="text-gray-600">Analyze your content for AI SEO optimization</p>
         </div>
 
         <div class="max-w-4xl mx-auto">
             <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
-                <textarea id="content" class="w-full h-64 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Paste your blog content here..."></textarea>
+                <!-- Tabs -->
+                <div class="border-b border-gray-200 mb-4">
+                    <nav class="flex -mb-px">
+                        <button onclick="switchTab('text')" id="text-tab" class="tab-active py-2 px-4 font-medium text-sm">
+                            Paste Content
+                        </button>
+                        <button onclick="switchTab('url')" id="url-tab" class="py-2 px-4 font-medium text-sm text-gray-500 hover:text-gray-700">
+                            Enter URL
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Text Input -->
+                <div id="text-input" class="block">
+                    <textarea id="content" class="w-full h-64 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Paste your blog content here..."></textarea>
+                </div>
+
+                <!-- URL Input -->
+                <div id="url-input" class="hidden">
+                    <div class="flex gap-4">
+                        <input type="url" id="url" class="flex-1 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter URL to analyze (e.g., https://example.com/blog/post)">
+                        <button onclick="fetchUrl()" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                            Fetch
+                        </button>
+                    </div>
+                    <div id="url-status" class="mt-2 text-sm text-gray-600"></div>
+                </div>
+
                 <button onclick="analyzeContent()" class="mt-4 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
                     Analyze Content
                 </button>
@@ -30,10 +61,10 @@
                 <div class="text-center mb-8">
                     <h2 class="text-2xl font-bold text-gray-800 mb-2">Analysis Results</h2>
                     <div class="text-4xl font-bold text-blue-500" id="total-score">0</div>
-                    <div class="text-gray-600">Total Score</div>
+                    <div class="text-gray-600">Total Score (out of 100)</div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <h3 class="font-semibold text-gray-800 mb-2">LLM Understanding</h3>
                         <div class="text-2xl font-bold text-green-500" id="llm-score">0</div>
@@ -46,22 +77,120 @@
                         <h3 class="font-semibold text-gray-800 mb-2">Link References</h3>
                         <div class="text-2xl font-bold text-purple-500" id="link-score">0</div>
                     </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 mb-2">Interactive Elements</h3>
+                        <div class="text-2xl font-bold text-orange-500" id="interactive-score">0</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 mb-2">Semantic Richness</h3>
+                        <div class="text-2xl font-bold text-indigo-500" id="semantic-score">0</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 mb-2">Context Optimization</h3>
+                        <div class="text-2xl font-bold text-pink-500" id="context-score">0</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 mb-2">Readability</h3>
+                        <div class="text-2xl font-bold text-teal-500" id="readability-score">0</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 mb-2">Recency</h3>
+                        <div class="text-2xl font-bold text-teal-500" id="recency-score">0</div>
+                    </div>
                 </div>
 
                 <div class="bg-gray-50 p-4 rounded-lg">
                     <h3 class="font-semibold text-gray-800 mb-4">Recommendations</h3>
-                    <ul id="recommendations" class="list-disc list-inside text-gray-600">
-                    </ul>
+                    <div class="grid grid-cols-1 gap-6">
+                        <div class="bg-red-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-red-800 mb-2">Needs Work</h4>
+                            <ul id="critical-recommendations" class="list-disc list-inside text-red-700">
+                            </ul>
+                        </div>
+                        <div class="bg-yellow-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-yellow-800 mb-2">Could Be Improved</h4>
+                            <ul id="improvement-recommendations" class="list-disc list-inside text-yellow-700">
+                            </ul>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-green-800 mb-2">What's Working Well</h4>
+                            <ul id="positive-recommendations" class="list-disc list-inside text-green-700">
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        function switchTab(tab) {
+            const textTab = document.getElementById('text-tab');
+            const urlTab = document.getElementById('url-tab');
+            const textInput = document.getElementById('text-input');
+            const urlInput = document.getElementById('url-input');
+
+            if (tab === 'text') {
+                textTab.classList.add('tab-active');
+                urlTab.classList.remove('tab-active');
+                textInput.classList.remove('hidden');
+                urlInput.classList.add('hidden');
+            } else {
+                textTab.classList.remove('tab-active');
+                urlTab.classList.add('tab-active');
+                textInput.classList.add('hidden');
+                urlInput.classList.remove('hidden');
+            }
+        }
+
+        async function fetchUrl() {
+            const urlInput = document.getElementById('url');
+            const urlStatus = document.getElementById('url-status');
+            const contentTextarea = document.getElementById('content');
+            
+            if (!urlInput.value) {
+                urlStatus.textContent = 'Please enter a URL';
+                return;
+            }
+
+            urlStatus.textContent = 'Fetching content...';
+            
+            try {
+                // Using a CORS proxy to fetch the content
+                const proxyUrl = 'https://api.allorigins.win/raw?url=';
+                const response = await fetch(proxyUrl + encodeURIComponent(urlInput.value));
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch content');
+                }
+
+                const html = await response.text();
+                
+                // Create a temporary div to parse the HTML
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                
+                // Extract main content (this is a simple approach, might need refinement)
+                const mainContent = tempDiv.querySelector('article, main, .content, .post, .article') || tempDiv;
+                
+                // Clean up the content
+                const content = mainContent.textContent.trim();
+                contentTextarea.value = content;
+                
+                urlStatus.textContent = 'Content fetched successfully!';
+                switchTab('text'); // Switch to text tab to show the content
+            } catch (error) {
+                urlStatus.textContent = 'Error fetching content: ' + error.message;
+            }
+        }
+
         async function analyzeContent() {
             const content = document.getElementById('content').value;
             if (!content) {
-                alert('Please paste some content to analyze');
+                alert('Please paste some content or fetch from URL to analyze');
                 return;
             }
 
@@ -72,101 +201,590 @@
             document.getElementById('results').classList.remove('hidden');
             
             // Update scores
+            function getScoreColor(score) {
+                if (score >= 80) return 'text-green-500';
+                if (score >= 50) return 'text-yellow-500';
+                return 'text-red-500';
+            }
             document.getElementById('total-score').textContent = analysis.total_score;
+            document.getElementById('total-score').className = 'text-4xl font-bold ' + getScoreColor(analysis.total_score);
             document.getElementById('llm-score').textContent = analysis.category_scores.llm_understanding;
+            document.getElementById('llm-score').className = 'text-2xl font-bold ' + getScoreColor(analysis.category_scores.llm_understanding);
             document.getElementById('structure-score').textContent = analysis.category_scores.structure;
+            document.getElementById('structure-score').className = 'text-2xl font-bold ' + getScoreColor(analysis.category_scores.structure);
             document.getElementById('link-score').textContent = analysis.category_scores.link_references;
+            document.getElementById('link-score').className = 'text-2xl font-bold ' + getScoreColor(analysis.category_scores.link_references);
+            document.getElementById('interactive-score').textContent = analysis.category_scores.interactive_elements;
+            document.getElementById('interactive-score').className = 'text-2xl font-bold ' + getScoreColor(analysis.category_scores.interactive_elements);
+            document.getElementById('semantic-score').textContent = analysis.category_scores.semantic_richness;
+            document.getElementById('semantic-score').className = 'text-2xl font-bold ' + getScoreColor(analysis.category_scores.semantic_richness);
+            document.getElementById('context-score').textContent = analysis.category_scores.context_optimization;
+            document.getElementById('context-score').className = 'text-2xl font-bold ' + getScoreColor(analysis.category_scores.context_optimization);
+            document.getElementById('readability-score').textContent = analysis.category_scores.readability;
+            document.getElementById('readability-score').className = 'text-2xl font-bold ' + getScoreColor(analysis.category_scores.readability);
+            document.getElementById('recency-score').textContent = analysis.category_scores.recency;
+            document.getElementById('recency-score').className = 'text-2xl font-bold ' + getScoreColor(analysis.category_scores.recency);
             
             // Update recommendations
             const recommendationsList = document.getElementById('recommendations');
-            recommendationsList.innerHTML = '';
-            analysis.recommendations.forEach(rec => {
+            const positiveList = document.getElementById('positive-recommendations');
+            const improvementList = document.getElementById('improvement-recommendations');
+            const criticalList = document.getElementById('critical-recommendations');
+            
+            // Clear existing recommendations
+            positiveList.innerHTML = '';
+            improvementList.innerHTML = '';
+            criticalList.innerHTML = '';
+            
+            // Categorize recommendations based on scores
+            const positiveRecommendations = [];
+            const improvementRecommendations = [];
+            const criticalRecommendations = [];
+            
+            // Add critical recommendations (scores < 60)
+            for (const category in analysis.category_scores) {
+                if (analysis.category_scores[category] < 60) {
+                    criticalRecommendations.push(`Needs improvement in ${category.replace('_', ' ')} (${analysis.category_scores[category]}%)`);
+                }
+            }
+            
+            // Add improvement recommendations (scores between 60 and 79)
+            for (const category in analysis.category_scores) {
+                if (analysis.category_scores[category] >= 60 && analysis.category_scores[category] < 80) {
+                    improvementRecommendations.push(`Good ${category.replace('_', ' ')} (${analysis.category_scores[category]}%), but could be improved.`);
+                }
+            }
+            
+            // Add positive feedback for high scores (≥80%)
+            for (const category in analysis.category_scores) {
+                if (analysis.category_scores[category] >= 80) {
+                    positiveRecommendations.push(`Excellent ${category.replace('_', ' ')} (${analysis.category_scores[category]}%)`);
+                }
+            }
+            
+            // Add specific recommendations based on analysis
+            // For tooltips, create a map of explanations for common recommendations
+            const recommendationExplanations = {
+                'Add more section headings': 'Section headings (H2, H3) help readers and search engines understand your content\'s structure. Break up long text into logical sections with descriptive headings.',
+                'Add bullet points or numbered lists': 'Lists make complex information easier to scan and remember. Use bullet points for unordered items and numbers for steps or rankings.',
+                'Add a TL;DR or Key Takeaways section': 'A summary at the top lets readers quickly grasp your main points and improves engagement. Use a short paragraph or bullet list.',
+                'Include more questions': 'Questions engage readers, anticipate their needs, and can help your content appear in featured snippets. Try adding FAQs or addressing common concerns.',
+                'Add more external links': 'Linking to authoritative sources builds trust and can improve your SEO. Reference reputable sites, studies, or industry leaders.',
+                'Include citations and references': 'Citations add credibility and help readers verify your claims. Use footnotes, endnotes, or in-line references to back up important statements.',
+                'Include more question words': 'Using question words (what, how, why, etc.) covers more user intents and improves semantic richness. This can help your content rank for a wider range of queries.',
+                'Add examples and related concepts': 'Examples and related concepts provide depth and context, helping both readers and search engines understand your topic more fully.',
+                'Needs improvement in llm understanding': 'Improve clarity and structure by using clear headings, concise sentences, and formatting (bold/italic) to highlight key points. Make sure your content is easy for both humans and AI to parse.',
+                'Needs improvement in interactive elements': 'Add interactive features such as videos, quizzes, calculators, or forms to engage users and increase time on page. Interactive content can boost SEO and user satisfaction.',
+                'Needs improvement in semantic richness': 'Expand your content with synonyms, related terms, and question words (what, how, why, etc.). This helps cover more user intents and improves your chances of ranking for a wider range of queries.',
+                'Needs improvement in readability': 'Break up long paragraphs, use active voice, and prefer simple words over jargon. Make your content easy to scan with lists and short sentences.',
+                'Needs improvement in recency': 'Update your content to reference recent events, data, or trends. Mention the current or previous quarter/year to show your information is up to date.',
+                'Good': 'This area is decent but could be further improved for optimal results.',
+                'Excellent': 'This area meets or exceeds best-practice standards.',
+                'Break down long sentences': 'Shorter sentences are easier to read and understand. Aim for 10-20 words per sentence to improve clarity.',
+                'Use bold or italic text': 'Emphasizing key points with bold or italic formatting helps important information stand out to readers.',
+                'Structure your content as a guide or tutorial': 'Guides and tutorials with clear steps are highly valued by both users and search engines. Use headings and lists to organize instructions.',
+                'Add evergreen content elements': 'Evergreen content (like guides, best practices, or tutorials) remains relevant over time and can drive consistent traffic.',
+                'Define key terms and concepts': 'Clear definitions help all readers, including those new to the topic, and can improve your chances of being featured in search results.',
+                'Add comparisons and contrasts': 'Comparing and contrasting concepts helps clarify differences and similarities, making your content more comprehensive.',
+                'Start with a clear introduction': 'An introduction sets the stage for your content, explains its purpose, and helps readers understand why it matters.',
+                'Use transition words': 'Transition words (like "furthermore", "in conclusion") guide readers through your content and improve flow.',
+                'State the purpose or goal': 'Clearly stating the purpose or goal helps readers know what to expect and why they should care.',
+                'Specify your target audience': 'Identifying your audience makes your content more relevant and engaging for the right readers.',
+                'Break down long paragraphs': 'Short paragraphs are easier to read, especially on mobile devices. Aim for 3-4 sentences per paragraph.',
+                'Use active voice': 'Active voice makes your writing more direct and engaging. For example, "The team completed the project" instead of "The project was completed by the team."',
+                'Replace complex words with simpler alternatives': 'Simple language is easier for everyone to understand. For example, use "use" instead of "utilize".',
+                'Use bullet points and numbered lists': 'Lists help break up text and highlight key information, making your content more scannable.',
+                'Add an interactive calculator or tool': 'Interactive tools engage users and provide practical value, increasing time on page and shareability.',
+                'Include an interactive quiz': 'Quizzes boost engagement and can help reinforce learning or understanding of your content.',
+                'Add interactive charts or data visualizations': 'Interactive visuals make complex data easier to understand and can increase user engagement.',
+                'Provide downloadable resources': 'Offering templates, checklists, or worksheets adds value and encourages users to return to your site.',
+                'Include video content or tutorials': 'Videos can explain concepts more clearly and appeal to different learning styles.'
+            };
+            function getExplanation(rec) {
+                // Try to match the start of the recommendation or use partial matches
+                for (const key in recommendationExplanations) {
+                    // If the recommendation starts with the key, or contains the key as a phrase
+                    if (rec.toLowerCase().startsWith(key.toLowerCase()) || rec.toLowerCase().includes(key.toLowerCase())) {
+                        return recommendationExplanations[key];
+                    }
+                }
+                // Try to match by removing dynamic parts (like numbers in parentheses)
+                const recStripped = rec.replace(/\([^)]*\)/g, '').trim();
+                for (const key in recommendationExplanations) {
+                    if (recStripped.toLowerCase().startsWith(key.toLowerCase()) || recStripped.toLowerCase().includes(key.toLowerCase())) {
+                        return recommendationExplanations[key];
+                    }
+                }
+                return 'Hover for more details on how to improve this aspect.';
+            }
+
+            // Populate the recommendation lists with tooltips
+            function createRecommendationItem(rec) {
                 const li = document.createElement('li');
-                li.textContent = rec;
-                recommendationsList.appendChild(li);
+                li.className = 'flex items-start gap-2';
+                const textSpan = document.createElement('span');
+                textSpan.textContent = rec;
+                li.appendChild(textSpan);
+                // Add tooltip icon
+                const tooltip = document.createElement('span');
+                tooltip.textContent = ' ?';
+                tooltip.className = 'ml-1 cursor-pointer text-blue-400 font-bold relative';
+                // Tooltip box
+                const tooltipBox = document.createElement('span');
+                tooltipBox.textContent = getExplanation(rec);
+                tooltipBox.className = 'absolute left-5 z-10 hidden bg-white border border-gray-300 text-gray-700 text-xs rounded p-2 shadow-lg w-64';
+                tooltip.addEventListener('mouseenter', () => { tooltipBox.classList.remove('hidden'); });
+                tooltip.addEventListener('mouseleave', () => { tooltipBox.classList.add('hidden'); });
+                tooltip.appendChild(tooltipBox);
+                li.appendChild(tooltip);
+                return li;
+            }
+            positiveRecommendations.forEach(rec => {
+                positiveList.appendChild(createRecommendationItem(rec));
+            });
+            improvementRecommendations.forEach(rec => {
+                improvementList.appendChild(createRecommendationItem(rec));
+            });
+            criticalRecommendations.forEach(rec => {
+                criticalList.appendChild(createRecommendationItem(rec));
             });
         }
 
         function analyzeContentLocally(content) {
-            // Initialize scores
-            const scores = {
+            // Initialize raw scores
+            const rawScores = {
                 llm_understanding: 0,
                 structure: 0,
-                link_references: 0
+                link_references: 0,
+                interactive_elements: 0,
+                semantic_richness: 0,
+                context_optimization: 0,
+                readability: 0,
+                recency: 0
+            };
+
+            // Maximum possible points for each category
+            const maxScores = {
+                llm_understanding: 60,    // 20 + 15 + 15 + 10
+                structure: 50,           // 20 + 15 + 15
+                link_references: 50,     // 20 + 15 + 15
+                interactive_elements: 80, // 8 points * 10 categories
+                semantic_richness: 40,   // 10 points * 4 categories
+                context_optimization: 40, // 10 points * 4 categories
+                readability: 40,         // 10 points * 4 categories
+                recency: 20 // New category, max 20 points
             };
 
             // Analyze LLM Understanding
             const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
             const avgSentenceLength = sentences.reduce((acc, sent) => acc + sent.split(' ').length, 0) / sentences.length;
             if (10 <= avgSentenceLength && avgSentenceLength <= 20) {
-                scores.llm_understanding += 20;
+                rawScores.llm_understanding += 20;
             }
 
             // Check for headings
             const headings = content.match(/<h[1-3][^>]*>.*?<\/h[1-3]>/gi) || [];
             if (headings.length >= 3) {
-                scores.llm_understanding += 15;
+                rawScores.llm_understanding += 15;
             }
 
             // Check for lists
             const lists = content.match(/<(ul|ol)[^>]*>.*?<\/(ul|ol)>/gi) || [];
             if (lists.length > 0) {
-                scores.llm_understanding += 15;
+                rawScores.llm_understanding += 15;
             }
 
             // Check for formatting
             if (content.includes('<strong>') || content.includes('<em>')) {
-                scores.llm_understanding += 10;
+                rawScores.llm_understanding += 10;
             }
 
             // Analyze Structure
             if (content.match(/TL;DR|Key Takeaways|Summary/i)) {
-                scores.structure += 20;
+                rawScores.structure += 20;
             }
 
             const questions = content.match(/\?/g) || [];
             if (questions.length >= 3) {
-                scores.structure += 15;
+                rawScores.structure += 15;
             }
 
             if (content.match(/FAQ|How to|Guide|Tutorial/i)) {
-                scores.structure += 15;
+                rawScores.structure += 15;
             }
 
             // Analyze Link References
             const links = content.match(/<a[^>]*>.*?<\/a>/gi) || [];
             if (links.length >= 3) {
-                scores.link_references += 20;
+                rawScores.link_references += 20;
             }
 
             if (content.match(/Source|Reference|Cited|According to/i)) {
-                scores.link_references += 15;
+                rawScores.link_references += 15;
             }
 
             const evergreenTerms = ['guide', 'tutorial', 'how to', 'best practices', 'fundamentals'];
             if (evergreenTerms.some(term => content.toLowerCase().includes(term))) {
-                scores.link_references += 15;
+                rawScores.link_references += 15;
             }
 
-            // Calculate total score
-            const total_score = Object.values(scores).reduce((a, b) => a + b, 0);
+            // Analyze Interactive Elements
+            // Only count actual interactive HTML elements and known widget embeds
+            let interactiveCount = 0;
+            // Embedded videos
+            if (content.match(/<video[\s>]/i)) {
+                interactiveCount++;
+            }
+            // Iframes (for embeds, widgets, etc.)
+            if (content.match(/<iframe[\s>]/i)) {
+                interactiveCount++;
+            }
+            // Embeds and objects
+            if (content.match(/<embed[\s>]/i) || content.match(/<object[\s>]/i)) {
+                interactiveCount++;
+            }
+            // Forms and form controls
+            if (content.match(/<form[\s>]/i) || content.match(/<input[\s>]/i) || content.match(/<button[\s>]/i) || content.match(/<select[\s>]/i) || content.match(/<textarea[\s>]/i)) {
+                interactiveCount++;
+            }
+            // Details/Summary (collapsible sections)
+            if (content.match(/<details[\s>]/i) || content.match(/<summary[\s>]/i)) {
+                interactiveCount++;
+            }
+            // Canvas (for interactive charts, but only if script or data attributes present)
+            if (content.match(/<canvas[\s>]/i) && (content.match(/<script[\s>]/i) || content.match(/data-chart|data-interactive|chartjs|plotly|highcharts|echarts|apexcharts/i))) {
+                interactiveCount++;
+            }
+            // Known widget embeds (codepen, jsfiddle, quizzes, etc.)
+            if (content.match(/codepen|jsfiddle|playbuzz|typeform|outgrow|quizlet|survey|poll/i)) {
+                interactiveCount++;
+            }
+            // Each type gives 20 points, up to 80 max
+            rawScores.interactive_elements = Math.min(interactiveCount * 20, maxScores.interactive_elements);
+
+            // Analyze Semantic Richness
+            // Check for keyword variations and synonyms
+            const keywordPatterns = content.match(/\b(what|how|why|when|where|which|who)\b/gi) || [];
+            if (keywordPatterns.length >= 5) {
+                rawScores.semantic_richness += 10;
+            }
+
+            // Check for related terms and concepts
+            if (content.match(/related|similar|like|such as|for example|including/i)) {
+                rawScores.semantic_richness += 10;
+            }
+
+            // Check for definitions and explanations
+            if (content.match(/defined as|means|refers to|in other words|specifically/i)) {
+                rawScores.semantic_richness += 10;
+            }
+
+            // Check for comparisons and contrasts
+            if (content.match(/compared to|versus|unlike|different from|similar to|in contrast/i)) {
+                rawScores.semantic_richness += 10;
+            }
+
+            // Analyze Context Optimization
+            // Check for clear topic introduction
+            if (content.match(/introduction|overview|background|context|about/i)) {
+                rawScores.context_optimization += 10;
+            }
+
+            // Check for clear section transitions
+            if (content.match(/furthermore|moreover|additionally|next|finally|in conclusion/i)) {
+                rawScores.context_optimization += 10;
+            }
+
+            // Check for clear purpose statement
+            if (content.match(/purpose|goal|objective|aim|intend|designed to/i)) {
+                rawScores.context_optimization += 10;
+            }
+
+            // Check for clear audience targeting
+            if (content.match(/for|targeted at|intended for|designed for|suitable for/i)) {
+                rawScores.context_optimization += 10;
+            }
+
+            // Analyze Readability
+            // Check for paragraph length
+            const paragraphs = content.split(/\n\s*\n/);
+            const shortParagraphs = paragraphs.filter(p => p.split(' ').length <= 100).length;
+            if (shortParagraphs / paragraphs.length >= 0.7) {
+                rawScores.readability += 10;
+            }
+
+            // Check for active voice
+            if (!content.match(/is|are|was|were|be|been|being/i)) {
+                rawScores.readability += 10;
+            }
+
+            // Check for clear language
+            if (!content.match(/utilize|implement|facilitate|leverage|optimize|synchronize/i)) {
+                rawScores.readability += 10;
+            }
+
+            // Check for bullet points and lists
+            if (content.match(/<ul>|<ol>|\* |\- |\d\./i)) {
+                rawScores.readability += 10;
+            }
+
+            // Analyze Recency (by quarter)
+            // Score if the content mentions a date in the current, previous, or recent quarters
+            function getQuarter(date) {
+                return Math.floor(date.getMonth() / 3) + 1;
+            }
+            const now = new Date();
+            const thisYear = now.getFullYear();
+            const thisQuarter = getQuarter(now);
+            let recencyScore = 0;
+            let found = false;
+            // Match Q1/Q2/Q3/Q4 YYYY
+            const quarterMatch = content.match(/Q([1-4])\s*(20\d{2})/i);
+            if (quarterMatch) {
+                const q = parseInt(quarterMatch[1]);
+                const y = parseInt(quarterMatch[2]);
+                if (y === thisYear && q === thisQuarter) {
+                    recencyScore = 20;
+                    found = true;
+                } else if (y === thisYear && q === thisQuarter - 1) {
+                    recencyScore = 15;
+                    found = true;
+                } else if (y === thisYear && q === thisQuarter - 2) {
+                    recencyScore = 10;
+                    found = true;
+                } else if ((y === thisYear && q < thisQuarter) || (y === thisYear - 1 && q > thisQuarter)) {
+                    recencyScore = 5;
+                    found = true;
+                }
+            }
+            // Match Month YYYY
+            if (!found) {
+                const monthYearMatch = content.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})/i);
+                if (monthYearMatch) {
+                    const month = new Date(Date.parse(monthYearMatch[1] + ' 1, 2000')).getMonth();
+                    const year = parseInt(monthYearMatch[2]);
+                    const date = new Date(year, month);
+                    const contentQuarter = getQuarter(date);
+                    if (year === thisYear && contentQuarter === thisQuarter) {
+                        recencyScore = 20;
+                        found = true;
+                    } else if (year === thisYear && contentQuarter === thisQuarter - 1) {
+                        recencyScore = 15;
+                        found = true;
+                    } else if (year === thisYear && contentQuarter === thisQuarter - 2) {
+                        recencyScore = 10;
+                        found = true;
+                    } else if ((year === thisYear && contentQuarter < thisQuarter) || (year === thisYear - 1 && contentQuarter > thisQuarter)) {
+                        recencyScore = 5;
+                        found = true;
+                    }
+                }
+            }
+            // Fallback: just year
+            if (!found) {
+                if (content.match(new RegExp(thisYear))) {
+                    recencyScore = 5;
+                } else if (content.match(new RegExp(thisYear - 1))) {
+                    recencyScore = 2;
+                }
+            }
+            rawScores.recency = recencyScore;
+
+            // Calculate normalized scores (out of 100)
+            const scores = {};
+            let totalRawScore = 0;
+            let totalMaxScore = 0;
+
+            for (const category in rawScores) {
+                totalRawScore += rawScores[category];
+                totalMaxScore += maxScores[category];
+            }
+
+            // Calculate individual category scores as percentages (0-100)
+            for (const category in rawScores) {
+                scores[category] = Math.round((rawScores[category] / maxScores[category]) * 100);
+            }
+
+            // Calculate the overall score as the average of all category scores
+            const categoryCount = Object.keys(scores).length;
+            const total_score = Math.round(Object.values(scores).reduce((a, b) => a + b, 0) / categoryCount);
 
             // Generate recommendations
             const recommendations = [];
-            if (scores.llm_understanding < 40) {
-                recommendations.push("Improve content structure with more headings and lists");
+            
+            // LLM Understanding recommendations
+            if (scores.llm_understanding < 60) {
+                const llmRecommendations = [];
+                
+                // Check sentence structure
+                if (avgSentenceLength > 20) {
+                    llmRecommendations.push("Break down long sentences (average length: " + Math.round(avgSentenceLength) + " words) into shorter, more digestible ones (aim for 10-20 words)");
+                }
+                
+                // Check headings
+                if (headings.length < 3) {
+                    llmRecommendations.push("Add more section headings (currently " + headings.length + ") to improve content structure and scannability");
+                }
+                
+                // Check lists
+                if (lists.length === 0) {
+                    llmRecommendations.push("Add bullet points or numbered lists to break down complex information");
+                }
+                
+                // Check formatting
+                if (!content.includes('<strong>') && !content.includes('<em>')) {
+                    llmRecommendations.push("Use bold or italic text to emphasize key points and important terms");
+                }
+                
+                recommendations.push(...llmRecommendations.slice(0, 2));
             }
-            if (scores.structure < 40) {
-                recommendations.push("Add a TL;DR section and more Q&A format content");
+
+            // Structure recommendations
+            if (scores.structure < 60) {
+                const structureRecommendations = [];
+                
+                if (!content.match(/TL;DR|Key Takeaways|Summary/i)) {
+                    structureRecommendations.push("Add a TL;DR or Key Takeaways section at the beginning to help readers quickly grasp the main points");
+                }
+                
+                const questionCount = (content.match(/\?/g) || []).length;
+                if (questionCount < 3) {
+                    structureRecommendations.push("Include more questions (currently " + questionCount + ") to engage readers and address their concerns");
+                }
+                
+                if (!content.match(/FAQ|How to|Guide|Tutorial/i)) {
+                    structureRecommendations.push("Structure your content as a guide or tutorial with clear step-by-step instructions");
+                }
+                
+                recommendations.push(...structureRecommendations.slice(0, 2));
             }
-            if (scores.link_references < 40) {
-                recommendations.push("Include more external links and citations");
+
+            // Link References recommendations
+            if (scores.link_references < 60) {
+                const linkRecommendations = [];
+                
+                const linkCount = (content.match(/<a[^>]*>.*?<\/a>/gi) || []).length;
+                if (linkCount < 3) {
+                    linkRecommendations.push("Add more external links (currently " + linkCount + ") to authoritative sources and related content");
+                }
+                
+                if (!content.match(/Source|Reference|Cited|According to/i)) {
+                    linkRecommendations.push("Include citations and references to support your claims and add credibility");
+                }
+                
+                const hasEvergreen = evergreenTerms.some(term => content.toLowerCase().includes(term));
+                if (!hasEvergreen) {
+                    linkRecommendations.push("Add evergreen content elements like guides, tutorials, or best practices to increase long-term value");
+                }
+                
+                recommendations.push(...linkRecommendations.slice(0, 2));
             }
+
+            // Semantic Richness recommendations
+            if (scores.semantic_richness < 60) {
+                const semanticRecommendations = [];
+                
+                const questionWords = (content.match(/\b(what|how|why|when|where|which|who)\b/gi) || []).length;
+                if (questionWords < 5) {
+                    semanticRecommendations.push("Include more question words (what, how, why, etc.) to address different aspects of your topic");
+                }
+                
+                if (!content.match(/related|similar|like|such as|for example|including/i)) {
+                    semanticRecommendations.push("Add examples and related concepts to provide more context and depth");
+                }
+                
+                if (!content.match(/defined as|means|refers to|in other words|specifically/i)) {
+                    semanticRecommendations.push("Define key terms and concepts clearly to help readers understand your content better");
+                }
+                
+                if (!content.match(/compared to|versus|unlike|different from|similar to|in contrast/i)) {
+                    semanticRecommendations.push("Add comparisons and contrasts to help readers understand relationships between concepts");
+                }
+                
+                recommendations.push(...semanticRecommendations.slice(0, 2));
+            }
+
+            // Context Optimization recommendations
+            if (scores.context_optimization < 60) {
+                const contextRecommendations = [];
+                
+                if (!content.match(/introduction|overview|background|context|about/i)) {
+                    contextRecommendations.push("Start with a clear introduction that sets the context and explains why the topic matters");
+                }
+                
+                if (!content.match(/furthermore|moreover|additionally|next|finally|in conclusion/i)) {
+                    contextRecommendations.push("Use transition words to connect ideas and guide readers through your content");
+                }
+                
+                if (!content.match(/purpose|goal|objective|aim|intend|designed to/i)) {
+                    contextRecommendations.push("State the purpose or goal of your content clearly to help readers understand what they'll learn");
+                }
+                
+                if (!content.match(/for|targeted at|intended for|designed for|suitable for/i)) {
+                    contextRecommendations.push("Specify your target audience to help readers determine if the content is relevant to them");
+                }
+                
+                recommendations.push(...contextRecommendations.slice(0, 2));
+            }
+
+            // Readability recommendations
+            if (scores.readability < 60) {
+                const readabilityRecommendations = [];
+                
+                const shortParagraphRatio = shortParagraphs / paragraphs.length;
+                if (shortParagraphRatio < 0.7) {
+                    readabilityRecommendations.push("Break down long paragraphs into shorter ones (aim for 3-4 sentences per paragraph)");
+                }
+                
+                if (content.match(/is|are|was|were|be|been|being/i)) {
+                    readabilityRecommendations.push("Use active voice instead of passive voice to make your writing more direct and engaging");
+                }
+                
+                if (content.match(/utilize|implement|facilitate|leverage|optimize|synchronize/i)) {
+                    readabilityRecommendations.push("Replace complex words with simpler alternatives (e.g., 'use' instead of 'utilize')");
+                }
+                
+                if (!content.match(/<ul>|<ol>|\* |\- |\d\./i)) {
+                    readabilityRecommendations.push("Use bullet points and numbered lists to break up text and highlight key information");
+                }
+                
+                recommendations.push(...readabilityRecommendations.slice(0, 2));
+            }
+
+            // Interactive elements recommendations
+            if (scores.interactive_elements < 60) {
+                const interactiveRecommendations = [];
+                
+                if (!content.match(/calculator|calculate|compute|estimate|converter|tool/i)) {
+                    interactiveRecommendations.push("Add an interactive calculator or tool to help readers apply your content");
+                }
+                
+                if (!content.match(/quiz|test|assessment|questionnaire|survey|poll/i)) {
+                    interactiveRecommendations.push("Include an interactive quiz to test readers' understanding and increase engagement");
+                }
+                
+                if (!content.match(/chart|graph|visualization|interactive|data visualization/i)) {
+                    interactiveRecommendations.push("Add interactive charts or data visualizations to illustrate key points");
+                }
+                
+                if (!content.match(/download|resource|template|worksheet|checklist/i)) {
+                    interactiveRecommendations.push("Provide downloadable resources like templates or checklists to add value");
+                }
+                
+                if (!content.match(/video|youtube|vimeo|embed|tutorial/i)) {
+                    interactiveRecommendations.push("Include video content or tutorials to enhance the learning experience");
+                }
+                
+                recommendations.push(...interactiveRecommendations.slice(0, 2));
+            }
+
+            // Remove duplicate recommendations and leading bullet points
+            const uniqueRecommendations = Array.from(new Set(recommendations)).map(rec => rec.replace(/^•\s*/, ''));
 
             return {
                 total_score,
                 category_scores: scores,
-                recommendations
+                recommendations: uniqueRecommendations.slice(0, 8) // Show top 8 most important recommendations
             };
         }
     </script>

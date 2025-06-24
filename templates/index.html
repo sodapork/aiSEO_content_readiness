@@ -9,18 +9,49 @@
         .gradient-bg {
             background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%);
         }
+        .tab-active {
+            border-bottom: 2px solid #3B82F6;
+            color: #3B82F6;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
         <div class="text-center mb-12">
             <h1 class="text-4xl font-bold text-gray-800 mb-4">AI SEO Content Analyzer</h1>
-            <p class="text-gray-600">Paste your blog content below to analyze its AI SEO optimization</p>
+            <p class="text-gray-600">Analyze your content for AI SEO optimization</p>
         </div>
 
         <div class="max-w-4xl mx-auto">
             <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
-                <textarea id="content" class="w-full h-64 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Paste your blog content here..."></textarea>
+                <!-- Tabs -->
+                <div class="border-b border-gray-200 mb-4">
+                    <nav class="flex -mb-px">
+                        <button onclick="switchTab('text')" id="text-tab" class="tab-active py-2 px-4 font-medium text-sm">
+                            Paste Content
+                        </button>
+                        <button onclick="switchTab('url')" id="url-tab" class="py-2 px-4 font-medium text-sm text-gray-500 hover:text-gray-700">
+                            Enter URL
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Text Input -->
+                <div id="text-input" class="block">
+                    <textarea id="content" class="w-full h-64 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Paste your blog content here..."></textarea>
+                </div>
+
+                <!-- URL Input -->
+                <div id="url-input" class="hidden">
+                    <div class="flex gap-4">
+                        <input type="url" id="url" class="flex-1 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter URL to analyze (e.g., https://example.com/blog/post)">
+                        <button onclick="fetchUrl()" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                            Fetch
+                        </button>
+                    </div>
+                    <div id="url-status" class="mt-2 text-sm text-gray-600"></div>
+                </div>
+
                 <button onclick="analyzeContent()" class="mt-4 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
                     Analyze Content
                 </button>
@@ -30,10 +61,10 @@
                 <div class="text-center mb-8">
                     <h2 class="text-2xl font-bold text-gray-800 mb-2">Analysis Results</h2>
                     <div class="text-4xl font-bold text-blue-500" id="total-score">0</div>
-                    <div class="text-gray-600">Total Score</div>
+                    <div class="text-gray-600">Total Score (out of 100)</div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <h3 class="font-semibold text-gray-800 mb-2">LLM Understanding</h3>
                         <div class="text-2xl font-bold text-green-500" id="llm-score">0</div>
@@ -46,22 +77,203 @@
                         <h3 class="font-semibold text-gray-800 mb-2">Link References</h3>
                         <div class="text-2xl font-bold text-purple-500" id="link-score">0</div>
                     </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 mb-2">Interactive Elements</h3>
+                        <div class="text-2xl font-bold text-orange-500" id="interactive-score">0</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 mb-2">Semantic Richness</h3>
+                        <div class="text-2xl font-bold text-indigo-500" id="semantic-score">0</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 mb-2">Context Optimization</h3>
+                        <div class="text-2xl font-bold text-pink-500" id="context-score">0</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 mb-2">Readability</h3>
+                        <div class="text-2xl font-bold text-teal-500" id="readability-score">0</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 mb-2">Recency</h3>
+                        <div class="text-2xl font-bold text-teal-500" id="recency-score">0</div>
+                    </div>
+                </div>
+
+                <!-- Keyword Intent Analysis Section -->
+                <div class="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg mb-8">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Keyword Intent Analysis</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Primary Intent -->
+                        <div class="bg-white p-4 rounded-lg shadow-sm">
+                            <h4 class="font-semibold text-gray-800 mb-3">Primary Search Intent</h4>
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="text-3xl font-bold text-blue-600" id="primary-intent">-</div>
+                                <div>
+                                    <div class="text-sm text-gray-600">Confidence</div>
+                                    <div class="text-lg font-semibold text-gray-800" id="intent-confidence">-</div>
+                                </div>
+                            </div>
+                            <div class="text-sm text-gray-600" id="intent-description">-</div>
+                        </div>
+                        
+                        <!-- Intent Breakdown -->
+                        <div class="bg-white p-4 rounded-lg shadow-sm">
+                            <h4 class="font-semibold text-gray-800 mb-3">Intent Breakdown</h4>
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Informational</span>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-20 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-blue-500 h-2 rounded-full" id="informational-bar" style="width: 0%"></div>
+                                        </div>
+                                        <span class="text-sm font-medium" id="informational-score">0</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Navigational</span>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-20 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-green-500 h-2 rounded-full" id="navigational-bar" style="width: 0%"></div>
+                                        </div>
+                                        <span class="text-sm font-medium" id="navigational-score">0</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Transactional</span>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-20 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-orange-500 h-2 rounded-full" id="transactional-bar" style="width: 0%"></div>
+                                        </div>
+                                        <span class="text-sm font-medium" id="transactional-score">0</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Commercial</span>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-20 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-purple-500 h-2 rounded-full" id="commercial-bar" style="width: 0%"></div>
+                                        </div>
+                                        <span class="text-sm font-medium" id="commercial-score">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Intent-Specific Recommendations -->
+                    <div class="mt-6 bg-white p-4 rounded-lg shadow-sm">
+                        <h4 class="font-semibold text-gray-800 mb-3">Intent Optimization Recommendations</h4>
+                        <ul id="intent-recommendations" class="list-disc list-inside text-gray-700 space-y-1">
+                            <!-- Intent recommendations will be populated here -->
+                        </ul>
+                    </div>
                 </div>
 
                 <div class="bg-gray-50 p-4 rounded-lg">
                     <h3 class="font-semibold text-gray-800 mb-4">Recommendations</h3>
-                    <ul id="recommendations" class="list-disc list-inside text-gray-600">
-                    </ul>
+                    <div class="grid grid-cols-1 gap-6">
+                        <div class="bg-red-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-red-800 mb-2">Needs Work</h4>
+                            <ul id="critical-recommendations" class="list-disc list-inside text-red-700">
+                            </ul>
+                        </div>
+                        <div class="bg-yellow-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-yellow-800 mb-2">Could Be Improved</h4>
+                            <ul id="improvement-recommendations" class="list-disc list-inside text-yellow-700">
+                            </ul>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-green-800 mb-2">What's Working Well</h4>
+                            <ul id="positive-recommendations" class="list-disc list-inside text-green-700">
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        function switchTab(tab) {
+            const textTab = document.getElementById('text-tab');
+            const urlTab = document.getElementById('url-tab');
+            const textInput = document.getElementById('text-input');
+            const urlInput = document.getElementById('url-input');
+
+            if (tab === 'text') {
+                textTab.classList.add('tab-active');
+                urlTab.classList.remove('tab-active');
+                textInput.classList.remove('hidden');
+                urlInput.classList.add('hidden');
+            } else {
+                textTab.classList.remove('tab-active');
+                urlTab.classList.add('tab-active');
+                textInput.classList.add('hidden');
+                urlInput.classList.remove('hidden');
+            }
+        }
+
+        async function fetchUrl() {
+            const urlInput = document.getElementById('url');
+            const urlStatus = document.getElementById('url-status');
+            const contentTextarea = document.getElementById('content');
+            
+            if (!urlInput.value) {
+                urlStatus.textContent = 'Please enter a URL';
+                return;
+            }
+
+            urlStatus.textContent = 'Fetching content...';
+            
+            try {
+                // Use our backend endpoint to fetch the content
+                const response = await fetch('/fetch-url', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: urlInput.value }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch content from server');
+                }
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                if (data.success) {
+                    // Populate the content textarea with the extracted content
+                    contentTextarea.value = data.content;
+                    
+                    // Show success message with metadata
+                    let statusMessage = `Content fetched successfully! (${data.word_count} words)`;
+                    if (data.title) {
+                        statusMessage += `\nTitle: ${data.title}`;
+                    }
+                    urlStatus.textContent = statusMessage;
+                    
+                    // Switch to text tab to show the content
+                    switchTab('text');
+                } else {
+                    throw new Error('Failed to extract content from the URL');
+                }
+            } catch (error) {
+                urlStatus.textContent = 'Error: ' + error.message;
+                console.error('URL fetch error:', error);
+            }
+        }
+
         async function analyzeContent() {
             const content = document.getElementById('content').value;
             if (!content) {
-                alert('Please paste some content to analyze');
+                alert('Please paste some content or fetch from URL to analyze');
                 return;
             }
 
@@ -80,19 +292,78 @@
                 document.getElementById('results').classList.remove('hidden');
                 
                 // Update scores
+                function getScoreColor(score) {
+                    if (score >= 80) return 'text-green-500';
+                    if (score >= 50) return 'text-yellow-500';
+                    return 'text-red-500';
+                }
+                
                 document.getElementById('total-score').textContent = data.total_score;
+                document.getElementById('total-score').className = 'text-4xl font-bold ' + getScoreColor(data.total_score);
                 document.getElementById('llm-score').textContent = data.category_scores.llm_understanding;
+                document.getElementById('llm-score').className = 'text-2xl font-bold ' + getScoreColor(data.category_scores.llm_understanding);
                 document.getElementById('structure-score').textContent = data.category_scores.structure;
+                document.getElementById('structure-score').className = 'text-2xl font-bold ' + getScoreColor(data.category_scores.structure);
                 document.getElementById('link-score').textContent = data.category_scores.link_references;
+                document.getElementById('link-score').className = 'text-2xl font-bold ' + getScoreColor(data.category_scores.link_references);
+                
+                // Update Keyword Intent Analysis
+                if (data.intent_analysis) {
+                    const intent = data.intent_analysis;
+                    
+                    // Update primary intent
+                    document.getElementById('primary-intent').textContent = intent.primary_intent.charAt(0).toUpperCase() + intent.primary_intent.slice(1);
+                    document.getElementById('intent-confidence').textContent = intent.confidence + '%';
+                    
+                    // Update intent description
+                    const intentDescriptions = {
+                        'informational': 'Users are looking for information, education, or answers to questions. Focus on providing comprehensive, educational content.',
+                        'navigational': 'Users are looking for a specific website, brand, or page. Focus on brand recognition and clear navigation.',
+                        'transactional': 'Users are ready to make a purchase or take action. Focus on conversion elements and clear CTAs.',
+                        'commercial': 'Users are researching products/services before making a decision. Focus on comparisons, reviews, and detailed information.'
+                    };
+                    document.getElementById('intent-description').textContent = intentDescriptions[intent.primary_intent] || 'Content intent analysis completed.';
+                    
+                    // Update intent breakdown bars and scores
+                    const intentScores = intent.intent_scores;
+                    const maxScore = Math.max(...Object.values(intentScores));
+                    
+                    Object.keys(intentScores).forEach(intentType => {
+                        const score = intentScores[intentType];
+                        const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
+                        
+                        document.getElementById(`${intentType}-score`).textContent = score;
+                        document.getElementById(`${intentType}-bar`).style.width = percentage + '%';
+                    });
+                    
+                    // Update intent recommendations
+                    const intentRecsList = document.getElementById('intent-recommendations');
+                    intentRecsList.innerHTML = '';
+                    
+                    intent.recommendations.forEach(rec => {
+                        const li = document.createElement('li');
+                        li.textContent = rec;
+                        intentRecsList.appendChild(li);
+                    });
+                }
                 
                 // Update recommendations
-                const recommendationsList = document.getElementById('recommendations');
-                recommendationsList.innerHTML = '';
+                const positiveList = document.getElementById('positive-recommendations');
+                const improvementList = document.getElementById('improvement-recommendations');
+                const criticalList = document.getElementById('critical-recommendations');
+                
+                // Clear existing recommendations
+                positiveList.innerHTML = '';
+                improvementList.innerHTML = '';
+                criticalList.innerHTML = '';
+                
+                // Add basic recommendations
                 data.recommendations.forEach(rec => {
                     const li = document.createElement('li');
                     li.textContent = rec;
-                    recommendationsList.appendChild(li);
+                    criticalList.appendChild(li);
                 });
+                
             } catch (error) {
                 console.error('Error:', error);
                 alert('An error occurred while analyzing the content');

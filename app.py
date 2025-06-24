@@ -1,18 +1,177 @@
 from flask import Flask, render_template, request, jsonify
 import nltk
 from bs4 import BeautifulSoup
-import spacy
 import re
 from collections import Counter
+import os
+import requests
+from urllib.parse import urlparse
+import time
 
 app = Flask(__name__)
 
-# Download required NLTK data
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
+# Ensure NLTK data path includes user directory
+nltk_data_dir = os.path.expanduser('~/nltk_data')
+if nltk_data_dir not in nltk.data.path:
+    nltk.data.path.append(nltk_data_dir)
 
-# Load spaCy model
-nlp = spacy.load('en_core_web_sm')
+print('NLTK data paths:', nltk.data.path)
+
+# Download required NLTK data
+try:
+    nltk.download('punkt', download_dir=nltk_data_dir)
+    nltk.download('averaged_perceptron_tagger', download_dir=nltk_data_dir)
+    nltk.download('tokenizers/punkt', download_dir=nltk_data_dir)
+except Exception as e:
+    print('NLTK download error:', e)
+    nltk.download('all', download_dir=nltk_data_dir)
+
+def simple_sent_tokenize(text):
+    # Split on period, exclamation, or question mark followed by space or end of string
+    return [s.strip() for s in re.split(r'[.!?](?:\s|$)', text) if s.strip()]
+
+def analyze_keyword_intent(text):
+    """
+    Analyze content to determine the primary search intent and provide recommendations.
+    Returns intent classification and specific optimization suggestions.
+    """
+    text_lower = text.lower()
+    
+    # Intent indicators for each category
+    intent_indicators = {
+        'informational': {
+            'keywords': [
+                'what is', 'how to', 'why', 'when', 'where', 'guide', 'tutorial', 'explain', 
+                'definition', 'meaning', 'overview', 'introduction', 'basics', 'fundamentals',
+                'tips', 'advice', 'learn', 'understand', 'examples', 'types', 'kinds'
+            ],
+            'patterns': [
+                r'\bwhat\b', r'\bhow\b', r'\bwhy\b', r'\bwhen\b', r'\bwhere\b',
+                r'\bguide\b', r'\btutorial\b', r'\bexplain\b', r'\bdefinition\b',
+                r'\bmeaning\b', r'\boverview\b', r'\bbasics\b', r'\btips\b',
+                r'\badvice\b', r'\blearn\b', r'\bunderstand\b', r'\bexamples\b'
+            ]
+        },
+        'navigational': {
+            'keywords': [
+                'official', 'website', 'homepage', 'login', 'sign up', 'contact',
+                'about us', 'company', 'brand', 'product name', 'service name',
+                'download', 'app', 'mobile app', 'web app', 'platform'
+            ],
+            'patterns': [
+                r'\bofficial\b', r'\bwebsite\b', r'\bhomepage\b', r'\blogin\b',
+                r'\bsign up\b', r'\bcontact\b', r'\babout us\b', r'\bcompany\b',
+                r'\bbrand\b', r'\bdownload\b', r'\bapp\b', r'\bplatform\b'
+            ]
+        },
+        'transactional': {
+            'keywords': [
+                'buy', 'purchase', 'order', 'shop', 'store', 'price', 'cost',
+                'discount', 'deal', 'offer', 'sale', 'free trial', 'demo',
+                'compare', 'review', 'best', 'top', 'recommend', 'alternative',
+                'vs', 'versus', 'alternative', 'competitor'
+            ],
+            'patterns': [
+                r'\bbuy\b', r'\bpurchase\b', r'\border\b', r'\bshop\b', r'\bstore\b',
+                r'\bprice\b', r'\bcost\b', r'\bdiscount\b', r'\bdeal\b', r'\boffer\b',
+                r'\bsale\b', r'\bfree trial\b', r'\bdemo\b', r'\bcompare\b',
+                r'\breview\b', r'\bbest\b', r'\btop\b', r'\brecommend\b'
+            ]
+        },
+        'commercial': {
+            'keywords': [
+                'review', 'comparison', 'vs', 'versus', 'alternative', 'best',
+                'top', 'recommend', 'pros and cons', 'advantages', 'disadvantages',
+                'features', 'benefits', 'specifications', 'specs', 'rating',
+                'test', 'analysis', 'evaluation'
+            ],
+            'patterns': [
+                r'\breview\b', r'\bcomparison\b', r'\bvs\b', r'\bversus\b',
+                r'\balternative\b', r'\bbest\b', r'\btop\b', r'\brecommend\b',
+                r'\bpros and cons\b', r'\badvantages\b', r'\bdisadvantages\b',
+                r'\bfeatures\b', r'\bbenefits\b', r'\bspecifications\b',
+                r'\bspecs\b', r'\brating\b', r'\btest\b', r'\banalysis\b'
+            ]
+        }
+    }
+    
+    # Calculate intent scores
+    intent_scores = {}
+    for intent, indicators in intent_indicators.items():
+        score = 0
+        
+        # Count keyword matches
+        for keyword in indicators['keywords']:
+            if keyword in text_lower:
+                score += 2
+        
+        # Count pattern matches
+        for pattern in indicators['patterns']:
+            matches = len(re.findall(pattern, text_lower))
+            score += matches
+        
+        intent_scores[intent] = score
+    
+    # Determine primary intent
+    primary_intent = max(intent_scores, key=intent_scores.get)
+    primary_score = intent_scores[primary_intent]
+    
+    # Calculate confidence (0-100)
+    total_possible_score = sum(len(indicators['keywords']) * 2 + len(indicators['patterns']) for indicators in intent_indicators.values())
+    confidence = min(100, (primary_score / total_possible_score) * 100) if total_possible_score > 0 else 0
+    
+    # Generate intent-specific recommendations
+    intent_recommendations = {
+        'informational': [
+            "Include clear definitions and explanations of key concepts",
+            "Add step-by-step guides or tutorials",
+            "Provide examples and use cases",
+            "Include a comprehensive FAQ section",
+            "Use educational content formats (how-to, what-is, why-does)",
+            "Add related topics and concepts for broader coverage"
+        ],
+        'navigational': [
+            "Include clear navigation elements and site structure",
+            "Add prominent calls-to-action for key pages",
+            "Include contact information and company details",
+            "Provide clear links to main sections of your site",
+            "Add breadcrumb navigation and site maps",
+            "Include brand-specific keywords and company information"
+        ],
+        'transactional': [
+            "Include clear pricing information and purchase options",
+            "Add prominent buy buttons and call-to-action elements",
+            "Provide product specifications and features",
+            "Include customer reviews and testimonials",
+            "Add trust signals (security badges, guarantees)",
+            "Include shipping and return policy information"
+        ],
+        'commercial': [
+            "Include detailed product comparisons and reviews",
+            "Add pros and cons analysis",
+            "Provide feature comparisons and specifications",
+            "Include expert opinions and third-party reviews",
+            "Add comparison tables and charts",
+            "Include alternatives and competitor analysis"
+        ]
+    }
+    
+    # Get recommendations for primary intent
+    recommendations = intent_recommendations.get(primary_intent, [])
+    
+    # Add secondary intent recommendations if scores are close
+    sorted_intents = sorted(intent_scores.items(), key=lambda x: x[1], reverse=True)
+    if len(sorted_intents) > 1 and sorted_intents[1][1] >= sorted_intents[0][1] * 0.7:
+        secondary_intent = sorted_intents[1][0]
+        secondary_recommendations = intent_recommendations.get(secondary_intent, [])
+        recommendations.extend(secondary_recommendations[:2])  # Add top 2 from secondary intent
+    
+    return {
+        'primary_intent': primary_intent,
+        'confidence': round(confidence, 1),
+        'intent_scores': intent_scores,
+        'recommendations': recommendations[:6]  # Limit to top 6 recommendations
+    }
 
 def analyze_content(content):
     # Parse HTML content
@@ -27,11 +186,10 @@ def analyze_content(content):
     
     # Analyze LLM Understanding
     text = soup.get_text()
-    doc = nlp(text)
     
-    # Check for clear language and sentence structure
-    sentences = list(doc.sents)
-    avg_sentence_length = sum(len(sent) for sent in sentences) / len(sentences)
+    # Use regex-based sentence splitter instead of NLTK
+    sentences = simple_sent_tokenize(text)
+    avg_sentence_length = sum(len(sent.split()) for sent in sentences) / len(sentences) if sentences else 0
     if 10 <= avg_sentence_length <= 20:
         scores['llm_understanding'] += 20
     
@@ -90,11 +248,129 @@ def analyze_content(content):
     if scores['link_references'] < 40:
         recommendations.append("Include more external links and citations")
     
+    # Analyze keyword intent
+    intent_analysis = analyze_keyword_intent(text)
+    
     return {
         'total_score': total_score,
         'category_scores': scores,
-        'recommendations': recommendations
+        'recommendations': recommendations,
+        'intent_analysis': intent_analysis
     }
+
+def extract_content_from_url(url):
+    """
+    Extract main content from a given URL.
+    Returns a dictionary with content and metadata.
+    """
+    try:
+        # Validate URL
+        parsed_url = urlparse(url)
+        if not parsed_url.scheme or not parsed_url.netloc:
+            return {'error': 'Invalid URL format'}
+        
+        # Set up headers to mimic a real browser
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        }
+        
+        # Fetch the URL with timeout
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        # Parse the HTML
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style", "nav", "header", "footer", "aside"]):
+            script.decompose()
+        
+        # Try to find the main content area
+        main_content = None
+        
+        # Common selectors for main content
+        content_selectors = [
+            'article',
+            'main',
+            '.content',
+            '.post',
+            '.article',
+            '.entry',
+            '.post-content',
+            '.article-content',
+            '.main-content',
+            '#content',
+            '#main',
+            '.blog-post',
+            '.blog-entry'
+        ]
+        
+        for selector in content_selectors:
+            main_content = soup.select_one(selector)
+            if main_content:
+                break
+        
+        # If no main content found, try to find the largest text block
+        if not main_content:
+            # Find all divs with substantial text content
+            divs = soup.find_all('div')
+            largest_div = None
+            max_text_length = 0
+            
+            for div in divs:
+                text_length = len(div.get_text(strip=True))
+                if text_length > max_text_length and text_length > 500:  # Minimum 500 characters
+                    max_text_length = text_length
+                    largest_div = div
+            
+            if largest_div:
+                main_content = largest_div
+            else:
+                # Fallback to body content
+                main_content = soup.find('body') or soup
+        
+        # Extract text content
+        if main_content:
+            # Get clean text
+            text_content = main_content.get_text(separator=' ', strip=True)
+            
+            # Clean up extra whitespace
+            text_content = re.sub(r'\s+', ' ', text_content).strip()
+            
+            # Get title
+            title = soup.find('title')
+            title_text = title.get_text(strip=True) if title else ''
+            
+            # Get meta description
+            meta_desc = soup.find('meta', attrs={'name': 'description'})
+            description = meta_desc.get('content', '') if meta_desc else ''
+            
+            return {
+                'success': True,
+                'content': text_content,
+                'title': title_text,
+                'description': description,
+                'url': url,
+                'word_count': len(text_content.split())
+            }
+        else:
+            return {'error': 'Could not extract content from the page'}
+            
+    except requests.exceptions.Timeout:
+        return {'error': 'Request timed out. The website took too long to respond.'}
+    except requests.exceptions.ConnectionError:
+        return {'error': 'Connection error. Could not connect to the website.'}
+    except requests.exceptions.HTTPError as e:
+        return {'error': f'HTTP error: {e.response.status_code}'}
+    except requests.exceptions.RequestException as e:
+        return {'error': f'Request failed: {str(e)}'}
+    except Exception as e:
+        return {'error': f'Unexpected error: {str(e)}'}
 
 @app.route('/')
 def home():
@@ -108,6 +384,15 @@ def analyze():
     
     analysis = analyze_content(content)
     return jsonify(analysis)
+
+@app.route('/fetch-url', methods=['POST'])
+def fetch_url():
+    url = request.json.get('url', '')
+    if not url:
+        return jsonify({'error': 'No URL provided'}), 400
+    
+    result = extract_content_from_url(url)
+    return jsonify(result)
 
 if __name__ == '__main__':
     app.run(debug=True) 

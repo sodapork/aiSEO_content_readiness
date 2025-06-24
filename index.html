@@ -102,6 +102,76 @@
                     </div>
                 </div>
 
+                <!-- Keyword Intent Analysis Section -->
+                <div class="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg mb-8">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Keyword Intent Analysis</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Primary Intent -->
+                        <div class="bg-white p-4 rounded-lg shadow-sm">
+                            <h4 class="font-semibold text-gray-800 mb-3">Primary Search Intent</h4>
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="text-3xl font-bold text-blue-600" id="primary-intent">-</div>
+                                <div>
+                                    <div class="text-sm text-gray-600">Confidence</div>
+                                    <div class="text-lg font-semibold text-gray-800" id="intent-confidence">-</div>
+                                </div>
+                            </div>
+                            <div class="text-sm text-gray-600" id="intent-description">-</div>
+                        </div>
+                        
+                        <!-- Intent Breakdown -->
+                        <div class="bg-white p-4 rounded-lg shadow-sm">
+                            <h4 class="font-semibold text-gray-800 mb-3">Intent Breakdown</h4>
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Informational</span>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-20 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-blue-500 h-2 rounded-full" id="informational-bar" style="width: 0%"></div>
+                                        </div>
+                                        <span class="text-sm font-medium" id="informational-score">0</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Navigational</span>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-20 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-green-500 h-2 rounded-full" id="navigational-bar" style="width: 0%"></div>
+                                        </div>
+                                        <span class="text-sm font-medium" id="navigational-score">0</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Transactional</span>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-20 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-orange-500 h-2 rounded-full" id="transactional-bar" style="width: 0%"></div>
+                                        </div>
+                                        <span class="text-sm font-medium" id="transactional-score">0</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Commercial</span>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-20 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-purple-500 h-2 rounded-full" id="commercial-bar" style="width: 0%"></div>
+                                        </div>
+                                        <span class="text-sm font-medium" id="commercial-score">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Intent-Specific Recommendations -->
+                    <div class="mt-6 bg-white p-4 rounded-lg shadow-sm">
+                        <h4 class="font-semibold text-gray-800 mb-3">Intent Optimization Recommendations</h4>
+                        <ul id="intent-recommendations" class="list-disc list-inside text-gray-700 space-y-1">
+                            <!-- Intent recommendations will be populated here -->
+                        </ul>
+                    </div>
+                </div>
+
                 <div class="bg-gray-50 p-4 rounded-lg">
                     <h3 class="font-semibold text-gray-800 mb-4">Recommendations</h3>
                     <div class="grid grid-cols-1 gap-6">
@@ -224,6 +294,46 @@
             document.getElementById('readability-score').className = 'text-2xl font-bold ' + getScoreColor(analysis.category_scores.readability);
             document.getElementById('recency-score').textContent = analysis.category_scores.recency;
             document.getElementById('recency-score').className = 'text-2xl font-bold ' + getScoreColor(analysis.category_scores.recency);
+            
+            // Update Keyword Intent Analysis
+            if (analysis.intent_analysis) {
+                const intent = analysis.intent_analysis;
+                
+                // Update primary intent
+                document.getElementById('primary-intent').textContent = intent.primary_intent.charAt(0).toUpperCase() + intent.primary_intent.slice(1);
+                document.getElementById('intent-confidence').textContent = intent.confidence + '%';
+                
+                // Update intent description
+                const intentDescriptions = {
+                    'informational': 'Users are looking for information, education, or answers to questions. Focus on providing comprehensive, educational content.',
+                    'navigational': 'Users are looking for a specific website, brand, or page. Focus on brand recognition and clear navigation.',
+                    'transactional': 'Users are ready to make a purchase or take action. Focus on conversion elements and clear CTAs.',
+                    'commercial': 'Users are researching products/services before making a decision. Focus on comparisons, reviews, and detailed information.'
+                };
+                document.getElementById('intent-description').textContent = intentDescriptions[intent.primary_intent] || 'Content intent analysis completed.';
+                
+                // Update intent breakdown bars and scores
+                const intentScores = intent.intent_scores;
+                const maxScore = Math.max(...Object.values(intentScores));
+                
+                Object.keys(intentScores).forEach(intentType => {
+                    const score = intentScores[intentType];
+                    const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
+                    
+                    document.getElementById(`${intentType}-score`).textContent = score;
+                    document.getElementById(`${intentType}-bar`).style.width = percentage + '%';
+                });
+                
+                // Update intent recommendations
+                const intentRecsList = document.getElementById('intent-recommendations');
+                intentRecsList.innerHTML = '';
+                
+                intent.recommendations.forEach(rec => {
+                    const li = document.createElement('li');
+                    li.textContent = rec;
+                    intentRecsList.appendChild(li);
+                });
+            }
             
             // Update recommendations
             const recommendationsList = document.getElementById('recommendations');
@@ -609,6 +719,157 @@
             const categoryCount = Object.keys(scores).length;
             const total_score = Math.round(Object.values(scores).reduce((a, b) => a + b, 0) / categoryCount);
 
+            // Analyze Keyword Intent
+            function analyzeKeywordIntent(text) {
+                const textLower = text.toLowerCase();
+                
+                // Intent indicators for each category
+                const intentIndicators = {
+                    'informational': {
+                        'keywords': [
+                            'what is', 'how to', 'why', 'when', 'where', 'guide', 'tutorial', 'explain', 
+                            'definition', 'meaning', 'overview', 'introduction', 'basics', 'fundamentals',
+                            'tips', 'advice', 'learn', 'understand', 'examples', 'types', 'kinds'
+                        ],
+                        'patterns': [
+                            /\bwhat\b/, /\bhow\b/, /\bwhy\b/, /\bwhen\b/, /\bwhere\b/,
+                            /\bguide\b/, /\btutorial\b/, /\bexplain\b/, /\bdefinition\b/,
+                            /\bmeaning\b/, /\boverview\b/, /\bbasics\b/, /\btips\b/,
+                            /\badvice\b/, /\blearn\b/, /\bunderstand\b/, /\bexamples\b/
+                        ]
+                    },
+                    'navigational': {
+                        'keywords': [
+                            'official', 'website', 'homepage', 'login', 'sign up', 'contact',
+                            'about us', 'company', 'brand', 'product name', 'service name',
+                            'download', 'app', 'mobile app', 'web app', 'platform'
+                        ],
+                        'patterns': [
+                            /\bofficial\b/, /\bwebsite\b/, /\bhomepage\b/, /\blogin\b/,
+                            /\bsign up\b/, /\bcontact\b/, /\babout us\b/, /\bcompany\b/,
+                            /\bbrand\b/, /\bdownload\b/, /\bapp\b/, /\bplatform\b/
+                        ]
+                    },
+                    'transactional': {
+                        'keywords': [
+                            'buy', 'purchase', 'order', 'shop', 'store', 'price', 'cost',
+                            'discount', 'deal', 'offer', 'sale', 'free trial', 'demo',
+                            'compare', 'review', 'best', 'top', 'recommend', 'alternative',
+                            'vs', 'versus', 'alternative', 'competitor'
+                        ],
+                        'patterns': [
+                            /\bbuy\b/, /\bpurchase\b/, /\border\b/, /\bshop\b/, /\bstore\b/,
+                            /\bprice\b/, /\bcost\b/, /\bdiscount\b/, /\bdeal\b/, /\boffer\b/,
+                            /\bsale\b/, /\bfree trial\b/, /\bdemo\b/, /\bcompare\b/,
+                            /\breview\b/, /\bbest\b/, /\btop\b/, /\brecommend\b/
+                        ]
+                    },
+                    'commercial': {
+                        'keywords': [
+                            'review', 'comparison', 'vs', 'versus', 'alternative', 'best',
+                            'top', 'recommend', 'pros and cons', 'advantages', 'disadvantages',
+                            'features', 'benefits', 'specifications', 'specs', 'rating',
+                            'test', 'analysis', 'evaluation'
+                        ],
+                        'patterns': [
+                            /\breview\b/, /\bcomparison\b/, /\bvs\b/, /\bversus\b/,
+                            /\balternative\b/, /\bbest\b/, /\btop\b/, /\brecommend\b/,
+                            /\bpros and cons\b/, /\badvantages\b/, /\bdisadvantages\b/,
+                            /\bfeatures\b/, /\bbenefits\b/, /\bspecifications\b/,
+                            /\bspecs\b/, /\brating\b/, /\btest\b/, /\banalysis\b/
+                        ]
+                    }
+                };
+                
+                // Calculate intent scores
+                const intentScores = {};
+                for (const intent in intentIndicators) {
+                    let score = 0;
+                    
+                    // Count keyword matches
+                    for (const keyword of intentIndicators[intent].keywords) {
+                        if (textLower.includes(keyword)) {
+                            score += 2;
+                        }
+                    }
+                    
+                    // Count pattern matches
+                    for (const pattern of intentIndicators[intent].patterns) {
+                        const matches = textLower.match(pattern);
+                        if (matches) {
+                            score += matches.length;
+                        }
+                    }
+                    
+                    intentScores[intent] = score;
+                }
+                
+                // Determine primary intent
+                const primaryIntent = Object.keys(intentScores).reduce((a, b) => intentScores[a] > intentScores[b] ? a : b);
+                const primaryScore = intentScores[primaryIntent];
+                
+                // Calculate confidence (0-100)
+                const totalPossibleScore = Object.values(intentIndicators).reduce((sum, indicators) => 
+                    sum + indicators.keywords.length * 2 + indicators.patterns.length, 0);
+                const confidence = totalPossibleScore > 0 ? Math.min(100, (primaryScore / totalPossibleScore) * 100) : 0;
+                
+                // Generate intent-specific recommendations
+                const intentRecommendations = {
+                    'informational': [
+                        "Include clear definitions and explanations of key concepts",
+                        "Add step-by-step guides or tutorials",
+                        "Provide examples and use cases",
+                        "Include a comprehensive FAQ section",
+                        "Use educational content formats (how-to, what-is, why-does)",
+                        "Add related topics and concepts for broader coverage"
+                    ],
+                    'navigational': [
+                        "Include clear navigation elements and site structure",
+                        "Add prominent calls-to-action for key pages",
+                        "Include contact information and company details",
+                        "Provide clear links to main sections of your site",
+                        "Add breadcrumb navigation and site maps",
+                        "Include brand-specific keywords and company information"
+                    ],
+                    'transactional': [
+                        "Include clear pricing information and purchase options",
+                        "Add prominent buy buttons and call-to-action elements",
+                        "Provide product specifications and features",
+                        "Include customer reviews and testimonials",
+                        "Add trust signals (security badges, guarantees)",
+                        "Include shipping and return policy information"
+                    ],
+                    'commercial': [
+                        "Include detailed product comparisons and reviews",
+                        "Add pros and cons analysis",
+                        "Provide feature comparisons and specifications",
+                        "Include expert opinions and third-party reviews",
+                        "Add comparison tables and charts",
+                        "Include alternatives and competitor analysis"
+                    ]
+                };
+                
+                // Get recommendations for primary intent
+                const recommendations = intentRecommendations[primaryIntent] || [];
+                
+                // Add secondary intent recommendations if scores are close
+                const sortedIntents = Object.entries(intentScores).sort((a, b) => b[1] - a[1]);
+                if (sortedIntents.length > 1 && sortedIntents[1][1] >= sortedIntents[0][1] * 0.7) {
+                    const secondaryIntent = sortedIntents[1][0];
+                    const secondaryRecommendations = intentRecommendations[secondaryIntent] || [];
+                    recommendations.push(...secondaryRecommendations.slice(0, 2));
+                }
+                
+                return {
+                    'primary_intent': primaryIntent,
+                    'confidence': Math.round(confidence * 10) / 10,
+                    'intent_scores': intentScores,
+                    'recommendations': recommendations.slice(0, 6)
+                };
+            }
+            
+            const intentAnalysis = analyzeKeywordIntent(content);
+
             // Generate recommendations
             const recommendations = [];
             
@@ -784,7 +1045,8 @@
             return {
                 total_score,
                 category_scores: scores,
-                recommendations: uniqueRecommendations.slice(0, 8) // Show top 8 most important recommendations
+                recommendations: uniqueRecommendations.slice(0, 8), // Show top 8 most important recommendations
+                intent_analysis: intentAnalysis
             };
         }
     </script>

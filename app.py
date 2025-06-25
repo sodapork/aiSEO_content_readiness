@@ -7,6 +7,7 @@ import os
 import requests
 from urllib.parse import urlparse
 import time
+import json
 
 app = Flask(__name__)
 
@@ -260,8 +261,8 @@ def analyze_content(content):
 
 def extract_content_from_url(url):
     """
-    Extract main content from a given URL.
-    Returns a dictionary with content and metadata.
+    Extract main content and comprehensive metadata from a given URL.
+    Returns a dictionary with content and detailed metadata.
     """
     try:
         # Validate URL
@@ -289,6 +290,9 @@ def extract_content_from_url(url):
         # Remove script and style elements
         for script in soup(["script", "style", "nav", "header", "footer", "aside"]):
             script.decompose()
+        
+        # Extract comprehensive metadata
+        metadata = extract_metadata(soup, url)
         
         # Try to find the main content area
         main_content = None
@@ -342,21 +346,19 @@ def extract_content_from_url(url):
             # Clean up extra whitespace
             text_content = re.sub(r'\s+', ' ', text_content).strip()
             
-            # Get title
-            title = soup.find('title')
-            title_text = title.get_text(strip=True) if title else ''
+            # Extract dates from content
+            content_dates = extract_dates_from_text(text_content)
             
-            # Get meta description
-            meta_desc = soup.find('meta', attrs={'name': 'description'})
-            description = meta_desc.get('content', '') if meta_desc else ''
+            # Get word count
+            word_count = len(text_content.split())
             
             return {
                 'success': True,
                 'content': text_content,
-                'title': title_text,
-                'description': description,
+                'word_count': word_count,
                 'url': url,
-                'word_count': len(text_content.split())
+                'metadata': metadata,
+                'content_dates': content_dates
             }
         else:
             return {'error': 'Could not extract content from the page'}
@@ -371,6 +373,236 @@ def extract_content_from_url(url):
         return {'error': f'Request failed: {str(e)}'}
     except Exception as e:
         return {'error': f'Unexpected error: {str(e)}'}
+
+def extract_metadata(soup, url):
+    """
+    Extract comprehensive metadata from HTML soup.
+    """
+    metadata = {
+        'title': '',
+        'description': '',
+        'keywords': '',
+        'author': '',
+        'publish_date': '',
+        'modified_date': '',
+        'canonical_url': '',
+        'og_title': '',
+        'og_description': '',
+        'og_image': '',
+        'og_type': '',
+        'twitter_card': '',
+        'twitter_title': '',
+        'twitter_description': '',
+        'twitter_image': '',
+        'schema_org': {},
+        'language': '',
+        'robots': '',
+        'viewport': '',
+        'charset': '',
+        'favicon': '',
+        'rss_feeds': [],
+        'json_ld': []
+    }
+    
+    # Basic meta tags
+    title_tag = soup.find('title')
+    if title_tag:
+        metadata['title'] = title_tag.get_text(strip=True)
+    
+    # Meta description
+    meta_desc = soup.find('meta', attrs={'name': 'description'})
+    if meta_desc:
+        metadata['description'] = meta_desc.get('content', '')
+    
+    # Meta keywords
+    meta_keywords = soup.find('meta', attrs={'name': 'keywords'})
+    if meta_keywords:
+        metadata['keywords'] = meta_keywords.get('content', '')
+    
+    # Author
+    meta_author = soup.find('meta', attrs={'name': 'author'})
+    if meta_author:
+        metadata['author'] = meta_author.get('content', '')
+    
+    # Publication date
+    meta_pub_date = soup.find('meta', attrs={'property': 'article:published_time'})
+    if meta_pub_date:
+        metadata['publish_date'] = meta_pub_date.get('content', '')
+    
+    # Modified date
+    meta_mod_date = soup.find('meta', attrs={'property': 'article:modified_time'})
+    if meta_mod_date:
+        metadata['modified_date'] = meta_mod_date.get('content', '')
+    
+    # Canonical URL
+    canonical = soup.find('link', attrs={'rel': 'canonical'})
+    if canonical:
+        metadata['canonical_url'] = canonical.get('href', '')
+    
+    # Open Graph tags
+    og_title = soup.find('meta', attrs={'property': 'og:title'})
+    if og_title:
+        metadata['og_title'] = og_title.get('content', '')
+    
+    og_desc = soup.find('meta', attrs={'property': 'og:description'})
+    if og_desc:
+        metadata['og_description'] = og_desc.get('content', '')
+    
+    og_image = soup.find('meta', attrs={'property': 'og:image'})
+    if og_image:
+        metadata['og_image'] = og_image.get('content', '')
+    
+    og_type = soup.find('meta', attrs={'property': 'og:type'})
+    if og_type:
+        metadata['og_type'] = og_type.get('content', '')
+    
+    # Twitter Card tags
+    twitter_card = soup.find('meta', attrs={'name': 'twitter:card'})
+    if twitter_card:
+        metadata['twitter_card'] = twitter_card.get('content', '')
+    
+    twitter_title = soup.find('meta', attrs={'name': 'twitter:title'})
+    if twitter_title:
+        metadata['twitter_title'] = twitter_title.get('content', '')
+    
+    twitter_desc = soup.find('meta', attrs={'name': 'twitter:description'})
+    if twitter_desc:
+        metadata['twitter_description'] = twitter_desc.get('content', '')
+    
+    twitter_image = soup.find('meta', attrs={'name': 'twitter:image'})
+    if twitter_image:
+        metadata['twitter_image'] = twitter_image.get('content', '')
+    
+    # Language
+    html_tag = soup.find('html')
+    if html_tag:
+        metadata['language'] = html_tag.get('lang', '')
+    
+    # Robots
+    robots = soup.find('meta', attrs={'name': 'robots'})
+    if robots:
+        metadata['robots'] = robots.get('content', '')
+    
+    # Viewport
+    viewport = soup.find('meta', attrs={'name': 'viewport'})
+    if viewport:
+        metadata['viewport'] = viewport.get('content', '')
+    
+    # Charset
+    charset = soup.find('meta', attrs={'charset': True})
+    if charset:
+        metadata['charset'] = charset.get('charset', '')
+    
+    # Favicon
+    favicon = soup.find('link', attrs={'rel': 'icon'}) or soup.find('link', attrs={'rel': 'shortcut icon'})
+    if favicon:
+        metadata['favicon'] = favicon.get('href', '')
+    
+    # RSS feeds
+    rss_links = soup.find_all('link', attrs={'type': 'application/rss+xml'})
+    for rss in rss_links:
+        metadata['rss_feeds'].append(rss.get('href', ''))
+    
+    # JSON-LD structured data
+    json_ld_scripts = soup.find_all('script', attrs={'type': 'application/ld+json'})
+    for script in json_ld_scripts:
+        try:
+            json_data = json.loads(script.string)
+            metadata['json_ld'].append(json_data)
+        except (json.JSONDecodeError, AttributeError):
+            continue
+    
+    # Extract dates from various sources
+    dates = extract_dates_from_metadata(soup)
+    if dates.get('publish_date') and not metadata['publish_date']:
+        metadata['publish_date'] = dates['publish_date']
+    if dates.get('modified_date') and not metadata['modified_date']:
+        metadata['modified_date'] = dates['modified_date']
+    
+    return metadata
+
+def extract_dates_from_metadata(soup):
+    """
+    Extract dates from various metadata sources.
+    """
+    dates = {}
+    
+    # Common date patterns in meta tags
+    date_patterns = [
+        {'property': 'article:published_time'},
+        {'property': 'article:modified_time'},
+        {'name': 'article:published_time'},
+        {'name': 'article:modified_time'},
+        {'property': 'og:updated_time'},
+        {'name': 'date'},
+        {'name': 'pubdate'},
+        {'name': 'lastmod'},
+        {'property': 'og:published_time'},
+        {'property': 'og:modified_time'}
+    ]
+    
+    for pattern in date_patterns:
+        meta_tag = soup.find('meta', attrs=pattern)
+        if meta_tag:
+            content = meta_tag.get('content', '')
+            if 'published' in str(pattern) or 'pubdate' in str(pattern):
+                dates['publish_date'] = content
+            elif 'modified' in str(pattern) or 'updated' in str(pattern):
+                dates['modified_date'] = content
+    
+    # Look for dates in schema.org structured data
+    schema_scripts = soup.find_all('script', attrs={'type': 'application/ld+json'})
+    for script in schema_scripts:
+        try:
+            data = json.loads(script.string)
+            if isinstance(data, dict):
+                # Check for datePublished and dateModified
+                if 'datePublished' in data and not dates.get('publish_date'):
+                    dates['publish_date'] = data['datePublished']
+                if 'dateModified' in data and not dates.get('modified_date'):
+                    dates['modified_date'] = data['dateModified']
+                
+                # Check for nested objects (like in Article schema)
+                if 'mainEntity' in data and isinstance(data['mainEntity'], dict):
+                    main_entity = data['mainEntity']
+                    if 'datePublished' in main_entity and not dates.get('publish_date'):
+                        dates['publish_date'] = main_entity['datePublished']
+                    if 'dateModified' in main_entity and not dates.get('modified_date'):
+                        dates['modified_date'] = main_entity['dateModified']
+        except (json.JSONDecodeError, AttributeError):
+            continue
+    
+    return dates
+
+def extract_dates_from_text(text):
+    """
+    Extract dates from text content using regex patterns.
+    """
+    dates = []
+    
+    # Common date patterns
+    date_patterns = [
+        # ISO format: 2023-12-25
+        r'\b\d{4}-\d{2}-\d{2}\b',
+        # US format: 12/25/2023
+        r'\b\d{1,2}/\d{1,2}/\d{4}\b',
+        # European format: 25/12/2023
+        r'\b\d{1,2}/\d{1,2}/\d{4}\b',
+        # Month name format: December 25, 2023
+        r'\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b',
+        # Abbreviated month: Dec 25, 2023
+        r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},?\s+\d{4}\b',
+        # Relative dates: "2 days ago", "last week", etc.
+        r'\b(?:yesterday|today|tomorrow|last\s+(?:week|month|year)|next\s+(?:week|month|year)|(\d+)\s+(?:days?|weeks?|months?|years?)\s+ago)\b'
+    ]
+    
+    for pattern in date_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        for match in matches:
+            if match not in dates:
+                dates.append(match)
+    
+    return dates[:10]  # Limit to first 10 dates found
 
 @app.route('/')
 def home():
@@ -395,4 +627,5 @@ def fetch_url():
     return jsonify(result)
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    # Development settings
+    app.run(debug=False, host='0.0.0.0', port=5000) 

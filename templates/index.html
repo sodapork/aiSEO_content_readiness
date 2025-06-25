@@ -50,6 +50,90 @@
                         </button>
                     </div>
                     <div id="url-status" class="mt-2 text-sm text-gray-600"></div>
+                    
+                    <!-- Metadata Display -->
+                    <div id="metadata-display" class="hidden mt-6 bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800 mb-4">Page Metadata</h3>
+                        
+                        <!-- Basic Info -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div class="bg-white p-3 rounded border">
+                                <h4 class="font-medium text-gray-700 mb-2">Basic Information</h4>
+                                <div class="space-y-1 text-sm">
+                                    <div><strong>Title:</strong> <span id="meta-title" class="text-gray-600">-</span></div>
+                                    <div><strong>Description:</strong> <span id="meta-description" class="text-gray-600">-</span></div>
+                                    <div><strong>Author:</strong> <span id="meta-author" class="text-gray-600">-</span></div>
+                                    <div><strong>Language:</strong> <span id="meta-language" class="text-gray-600">-</span></div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white p-3 rounded border">
+                                <h4 class="font-medium text-gray-700 mb-2">Dates</h4>
+                                <div class="space-y-1 text-sm">
+                                    <div><strong>Published:</strong> <span id="meta-publish-date" class="text-gray-600">-</span></div>
+                                    <div><strong>Modified:</strong> <span id="meta-modified-date" class="text-gray-600">-</span></div>
+                                    <div><strong>Content Dates:</strong> <span id="meta-content-dates" class="text-gray-600">-</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Social Media -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div class="bg-white p-3 rounded border">
+                                <h4 class="font-medium text-gray-700 mb-2">Open Graph</h4>
+                                <div class="space-y-1 text-sm">
+                                    <div><strong>Title:</strong> <span id="og-title" class="text-gray-600">-</span></div>
+                                    <div><strong>Description:</strong> <span id="og-description" class="text-gray-600">-</span></div>
+                                    <div><strong>Type:</strong> <span id="og-type" class="text-gray-600">-</span></div>
+                                    <div><strong>Image:</strong> <span id="og-image" class="text-gray-600">-</span></div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white p-3 rounded border">
+                                <h4 class="font-medium text-gray-700 mb-2">Twitter Card</h4>
+                                <div class="space-y-1 text-sm">
+                                    <div><strong>Card Type:</strong> <span id="twitter-card" class="text-gray-600">-</span></div>
+                                    <div><strong>Title:</strong> <span id="twitter-title" class="text-gray-600">-</span></div>
+                                    <div><strong>Description:</strong> <span id="twitter-description" class="text-gray-600">-</span></div>
+                                    <div><strong>Image:</strong> <span id="twitter-image" class="text-gray-600">-</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- SEO & Technical -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div class="bg-white p-3 rounded border">
+                                <h4 class="font-medium text-gray-700 mb-2">SEO & Technical</h4>
+                                <div class="space-y-1 text-sm">
+                                    <div><strong>Keywords:</strong> <span id="meta-keywords" class="text-gray-600">-</span></div>
+                                    <div><strong>Canonical URL:</strong> <span id="meta-canonical" class="text-gray-600">-</span></div>
+                                    <div><strong>Robots:</strong> <span id="meta-robots" class="text-gray-600">-</span></div>
+                                    <div><strong>Viewport:</strong> <span id="meta-viewport" class="text-gray-600">-</span></div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white p-3 rounded border">
+                                <h4 class="font-medium text-gray-700 mb-2">Additional</h4>
+                                <div class="space-y-1 text-sm">
+                                    <div><strong>Favicon:</strong> <span id="meta-favicon" class="text-gray-600">-</span></div>
+                                    <div><strong>RSS Feeds:</strong> <span id="meta-rss" class="text-gray-600">-</span></div>
+                                    <div><strong>JSON-LD:</strong> <span id="meta-jsonld" class="text-gray-600">-</span></div>
+                                    <div><strong>Word Count:</strong> <span id="meta-wordcount" class="text-gray-600">-</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Metadata Quality Score -->
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-blue-800 mb-2">Metadata Quality Score</h4>
+                            <div class="flex items-center gap-4">
+                                <div class="text-2xl font-bold text-blue-600" id="metadata-score">0</div>
+                                <div class="text-sm text-blue-700">
+                                    <div id="metadata-feedback">No metadata found</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <button onclick="analyzeContent()" class="mt-4 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
@@ -220,13 +304,15 @@
             const urlInput = document.getElementById('url');
             const urlStatus = document.getElementById('url-status');
             const contentTextarea = document.getElementById('content');
+            const metadataDisplay = document.getElementById('metadata-display');
             
             if (!urlInput.value) {
                 urlStatus.textContent = 'Please enter a URL';
                 return;
             }
 
-            urlStatus.textContent = 'Fetching content...';
+            urlStatus.textContent = 'Fetching content and metadata...';
+            metadataDisplay.classList.add('hidden');
             
             try {
                 // Use our backend endpoint to fetch the content
@@ -252,10 +338,13 @@
                     // Populate the content textarea with the extracted content
                     contentTextarea.value = data.content;
                     
+                    // Display metadata
+                    displayMetadata(data.metadata, data.content_dates, data.word_count);
+                    
                     // Show success message with metadata
                     let statusMessage = `Content fetched successfully! (${data.word_count} words)`;
-                    if (data.title) {
-                        statusMessage += `\nTitle: ${data.title}`;
+                    if (data.metadata.title) {
+                        statusMessage += `\nTitle: ${data.metadata.title}`;
                     }
                     urlStatus.textContent = statusMessage;
                     
@@ -268,6 +357,114 @@
                 urlStatus.textContent = 'Error: ' + error.message;
                 console.error('URL fetch error:', error);
             }
+        }
+
+        function displayMetadata(metadata, contentDates, wordCount) {
+            const metadataDisplay = document.getElementById('metadata-display');
+            
+            // Basic Information
+            document.getElementById('meta-title').textContent = metadata.title || '-';
+            document.getElementById('meta-description').textContent = metadata.description || '-';
+            document.getElementById('meta-author').textContent = metadata.author || '-';
+            document.getElementById('meta-language').textContent = metadata.language || '-';
+            
+            // Dates
+            document.getElementById('meta-publish-date').textContent = formatDate(metadata.publish_date) || '-';
+            document.getElementById('meta-modified-date').textContent = formatDate(metadata.modified_date) || '-';
+            document.getElementById('meta-content-dates').textContent = contentDates.length > 0 ? contentDates.join(', ') : '-';
+            
+            // Open Graph
+            document.getElementById('og-title').textContent = metadata.og_title || '-';
+            document.getElementById('og-description').textContent = metadata.og_description || '-';
+            document.getElementById('og-type').textContent = metadata.og_type || '-';
+            document.getElementById('og-image').textContent = metadata.og_image || '-';
+            
+            // Twitter Card
+            document.getElementById('twitter-card').textContent = metadata.twitter_card || '-';
+            document.getElementById('twitter-title').textContent = metadata.twitter_title || '-';
+            document.getElementById('twitter-description').textContent = metadata.twitter_description || '-';
+            document.getElementById('twitter-image').textContent = metadata.twitter_image || '-';
+            
+            // SEO & Technical
+            document.getElementById('meta-keywords').textContent = metadata.keywords || '-';
+            document.getElementById('meta-canonical').textContent = metadata.canonical_url || '-';
+            document.getElementById('meta-robots').textContent = metadata.robots || '-';
+            document.getElementById('meta-viewport').textContent = metadata.viewport || '-';
+            
+            // Additional
+            document.getElementById('meta-favicon').textContent = metadata.favicon || '-';
+            document.getElementById('meta-rss').textContent = metadata.rss_feeds.length > 0 ? metadata.rss_feeds.join(', ') : '-';
+            document.getElementById('meta-jsonld').textContent = metadata.json_ld.length > 0 ? `${metadata.json_ld.length} structured data blocks` : '-';
+            document.getElementById('meta-wordcount').textContent = wordCount || '-';
+            
+            // Calculate and display metadata quality score
+            const score = calculateMetadataScore(metadata, contentDates, wordCount);
+            document.getElementById('metadata-score').textContent = score.score;
+            document.getElementById('metadata-feedback').textContent = score.feedback;
+            
+            // Show metadata display
+            metadataDisplay.classList.remove('hidden');
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return null;
+            
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return dateString; // Return original if invalid
+                return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+            } catch (e) {
+                return dateString; // Return original if parsing fails
+            }
+        }
+
+        function calculateMetadataScore(metadata, contentDates, wordCount) {
+            let score = 0;
+            let feedback = [];
+            
+            // Basic metadata (40 points)
+            if (metadata.title) { score += 10; feedback.push('✓ Title present'); }
+            if (metadata.description) { score += 10; feedback.push('✓ Description present'); }
+            if (metadata.author) { score += 5; feedback.push('✓ Author specified'); }
+            if (metadata.language) { score += 5; feedback.push('✓ Language specified'); }
+            if (metadata.keywords) { score += 5; feedback.push('✓ Keywords present'); }
+            if (metadata.canonical_url) { score += 5; feedback.push('✓ Canonical URL set'); }
+            
+            // Social media (30 points)
+            if (metadata.og_title) { score += 5; feedback.push('✓ Open Graph title'); }
+            if (metadata.og_description) { score += 5; feedback.push('✓ Open Graph description'); }
+            if (metadata.og_image) { score += 5; feedback.push('✓ Open Graph image'); }
+            if (metadata.og_type) { score += 5; feedback.push('✓ Open Graph type'); }
+            if (metadata.twitter_card) { score += 5; feedback.push('✓ Twitter Card type'); }
+            if (metadata.twitter_title) { score += 5; feedback.push('✓ Twitter title'); }
+            
+            // Dates and freshness (20 points)
+            if (metadata.publish_date) { score += 10; feedback.push('✓ Publication date'); }
+            if (metadata.modified_date) { score += 5; feedback.push('✓ Last modified date'); }
+            if (contentDates.length > 0) { score += 5; feedback.push('✓ Dates found in content'); }
+            
+            // Technical SEO (10 points)
+            if (metadata.robots) { score += 3; feedback.push('✓ Robots meta tag'); }
+            if (metadata.viewport) { score += 3; feedback.push('✓ Viewport meta tag'); }
+            if (metadata.json_ld.length > 0) { score += 4; feedback.push('✓ Structured data present'); }
+            
+            // Content quality bonus
+            if (wordCount > 500) { score += 5; feedback.push('✓ Substantial content'); }
+            if (wordCount > 1000) { score += 5; feedback.push('✓ Comprehensive content'); }
+            
+            // Cap at 100
+            score = Math.min(score, 100);
+            
+            // Generate feedback message
+            let feedbackMessage = feedback.length > 0 ? feedback.slice(0, 3).join(', ') : 'No metadata found';
+            if (feedback.length > 3) {
+                feedbackMessage += ` and ${feedback.length - 3} more...`;
+            }
+            
+            return {
+                score: score,
+                feedback: feedbackMessage
+            };
         }
 
         async function analyzeContent() {

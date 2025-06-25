@@ -626,6 +626,10 @@ def fetch_url():
     result = extract_content_from_url(url)
     return jsonify(result)
 
+@app.route('/test')
+def test():
+    return 'It works!'
+
 if __name__ == '__main__':
     # Development settings
     app.run(debug=False, host='0.0.0.0', port=5000) 
